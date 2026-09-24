@@ -1,8 +1,9 @@
 import React from 'react';
-import { Minus, X, Plus, Settings, Moon, Sun, Laptop } from 'lucide-react';
+import { Minus, X, Plus, Settings, Moon, Sun, Laptop, Download } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { formatDateUkrainian } from '../lib/i18n';
 import { ThemeMode } from '../lib/types';
+import { Update } from '@tauri-apps/plugin-updater';
 
 interface TitleBarProps {
   currentDateStr: string;
@@ -10,6 +11,8 @@ interface TitleBarProps {
   onToggleTheme: () => void;
   onOpenAddModal: () => void;
   onOpenSettingsModal: () => void;
+  availableUpdate?: Update | null;
+  onOpenUpdateModal?: () => void;
 }
 
 export const TitleBar: React.FC<TitleBarProps> = ({
@@ -18,6 +21,8 @@ export const TitleBar: React.FC<TitleBarProps> = ({
   onToggleTheme,
   onOpenAddModal,
   onOpenSettingsModal,
+  availableUpdate,
+  onOpenUpdateModal,
 }) => {
   const handleMinimize = async () => {
     try {
@@ -95,6 +100,22 @@ export const TitleBar: React.FC<TitleBarProps> = ({
             <Laptop className="w-4 h-4 text-emerald-500 dark:text-emerald-400 animate-in fade-in zoom-in-75 duration-200" />
           )}
         </button>
+
+        {/* Available Update Notification Button */}
+        {availableUpdate && (
+          <button
+            onClick={onOpenUpdateModal}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500/15 to-teal-500/15 hover:from-emerald-500/25 hover:to-teal-500/25 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 hover:border-emerald-500/50 font-semibold text-xs transition-all active:scale-95 shadow-sm shadow-emerald-500/10 group"
+            title={`Доступне оновлення v${availableUpdate.version}! Натисніть для перегляду та встановлення`}
+          >
+            <div className="relative flex items-center justify-center">
+              <Download className="w-3.5 h-3.5 text-emerald-500 group-hover:translate-y-0.5 transition-transform" />
+              <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
+              <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full" />
+            </div>
+            <span className="hidden sm:inline font-medium">Оновлення v{availableUpdate.version}</span>
+          </button>
+        )}
 
         {/* Settings Button */}
         <button

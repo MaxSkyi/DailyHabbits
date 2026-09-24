@@ -345,6 +345,8 @@ export const App: React.FC = () => {
           setIsAddModalOpen(true);
         }}
         onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
+        availableUpdate={availableUpdate}
+        onOpenUpdateModal={() => setIsUpdateModalOpen(true)}
       />
 
       {/* Main Content Area */}
