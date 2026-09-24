@@ -125,7 +125,9 @@ export const MetricCards: React.FC<MetricCardsProps> = ({ metrics }) => {
           </div>
 
           <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
-            Виконано за 7 днів
+            {metrics.activeHabitsCount > 0 && metrics.thisWeekTotal > 0
+              ? `Пройдено ${Math.min(7, Math.round(metrics.thisWeekTotal / Math.max(1, metrics.activeHabitsCount)))} з 7 днів`
+              : 'Поточний тиждень'}
           </p>
         </div>
 

@@ -6,6 +6,7 @@ import { sendTestNotification, ensureNotificationPermission } from '../lib/notif
 import { checkForAppUpdate } from '../lib/updater';
 import { Update } from '@tauri-apps/plugin-updater';
 import { invoke } from '@tauri-apps/api/core';
+import { getVersion } from '@tauri-apps/api/app';
 import { enable, disable } from '@tauri-apps/plugin-autostart';
 
 interface SettingsModalProps {
@@ -30,10 +31,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const [reminderTime, setReminderTime] = useState(settings.reminderTime || '20:00');
   const [autostart, setAutostart] = useState(settings.autostartEnabled);
+  const [appVersion, setAppVersion] = useState('1.0.1');
   const [fieldStatus, setFieldStatus] = useState<Record<string, string>>({});
   const [floatingToast, setFloatingToast] = useState<string | null>(null);
   const [isConfirmingClear, setIsConfirmingClear] = useState(false);
   const confirmClearTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    getVersion().then(setAppVersion).catch(() => setAppVersion('1.0.1'));
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -517,7 +523,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 Оновлення програми
               </label>
               <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400">
-                v1.0.0
+                v{appVersion}
               </span>
             </div>
 
