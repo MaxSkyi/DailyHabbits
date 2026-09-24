@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+target/
+src-tauri/target/
+
+# Build artifacts
+dist/
+dist-ssr/
+*.local
+
+# Tauri Keys & Secrets
+src-tauri/.tauri/*.key
+*.key
+
+# Editor & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

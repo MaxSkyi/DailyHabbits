@@ -1,0 +1,29 @@
+[package]
+name = "habits-tracker-desktop"
+version = "1.0.0"
+description = "Habits Tracker Desktop App"
+authors = ["Habits Tracker Team"]
+edition = "2021"
+
+[lib]
+name = "habits_tracker_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "image-png", "image-ico"] }
+tauri-plugin-sql = { version = "2", features = ["sqlite"] }
+tauri-plugin-autostart = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-updater = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = "0.4"
+tokio = { version = "1", features = ["time", "sync", "rt"] }
+rfd = "0.15"
+
+[profile.dev]
+incremental = false
+
