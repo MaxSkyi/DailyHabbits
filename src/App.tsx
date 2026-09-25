@@ -7,6 +7,7 @@ import { ActivityHeatmap } from './components/ActivityHeatmap';
 import { HabitModal } from './components/HabitModal';
 import { SettingsModal } from './components/SettingsModal';
 import { UpdateModal } from './components/UpdateModal';
+import { MetricDetailModal, MetricDetailType } from './components/MetricDetailModal';
 import { Habit, HabitWithLogs, MetricStats, AppSettings } from './lib/types';
 import { checkForAppUpdate } from './lib/updater';
 import { Update } from '@tauri-apps/plugin-updater';
@@ -55,6 +56,8 @@ export const App: React.FC = () => {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [availableUpdate, setAvailableUpdate] = useState<Update | null>(null);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [detailModalType, setDetailModalType] = useState<MetricDetailType>('today');
 
   // Apply theme whenever settings.theme changes
   useEffect(() => {
@@ -352,7 +355,13 @@ export const App: React.FC = () => {
       {/* Main Content Area */}
       <main className="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
         {/* Top 4 Metrics Cards */}
-        <MetricCards metrics={metrics} />
+        <MetricCards
+          metrics={metrics}
+          onOpenDetail={(type) => {
+            setDetailModalType(type);
+            setIsDetailModalOpen(true);
+          }}
+        />
 
         {/* Habits List with Week Navigation */}
         <HabitList
@@ -380,6 +389,18 @@ export const App: React.FC = () => {
           logicalTodayStr={logicalTodayStr}
         />
       </main>
+
+      {/* Metric Detail Analytics Modal */}
+      <MetricDetailModal
+        isOpen={isDetailModalOpen}
+        onClose={() => setIsDetailModalOpen(false)}
+        activeType={detailModalType}
+        onChangeType={(type) => setDetailModalType(type)}
+        metrics={metrics}
+        habits={habits}
+        logicalTodayStr={logicalTodayStr}
+        weekDays={currentWeekDays}
+      />
 
       {/* Habit Create / Edit Modal */}
       <HabitModal
