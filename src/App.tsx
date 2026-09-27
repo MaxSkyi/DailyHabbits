@@ -9,9 +9,11 @@ import { SettingsModal } from './components/SettingsModal';
 import { UpdateModal } from './components/UpdateModal';
 import { MetricDetailModal, MetricDetailType } from './components/MetricDetailModal';
 import { MoodModal } from './components/MoodModal';
+import { ChangelogModal } from './components/ChangelogModal';
 import { Habit, HabitWithLogs, MetricStats, AppSettings, DailyMood, MoodLevel } from './lib/types';
 import { checkForAppUpdate } from './lib/updater';
 import { Update } from '@tauri-apps/plugin-updater';
+import { getVersion } from '@tauri-apps/api/app';
 import {
   initDatabase,
   loadHabitsWithLogs,
@@ -65,6 +67,9 @@ export const App: React.FC = () => {
   const [detailModalType, setDetailModalType] = useState<MetricDetailType>('today');
   const [selectedMoodDate, setSelectedMoodDate] = useState<string | null>(null);
   const [isMoodModalOpen, setIsMoodModalOpen] = useState(false);
+  const [isChangelogOpen, setIsChangelogOpen] = useState(false);
+  const [changelogMode, setChangelogMode] = useState<'whats-new' | 'full-history'>('whats-new');
+  const [changelogVersion, setChangelogVersion] = useState('1.0.7');
 
   // Apply theme whenever settings.theme changes
   useEffect(() => {
@@ -123,6 +128,18 @@ export const App: React.FC = () => {
           setAvailableUpdate(update);
           setIsUpdateModalOpen(true);
         }
+      } catch {}
+
+      // Check if newly updated version has been launched (show What's New)
+      try {
+        const currentVer = await getVersion().catch(() => '1.0.7');
+        const lastSeenVer = localStorage.getItem('habits_last_seen_version');
+        if (lastSeenVer && lastSeenVer !== currentVer) {
+          setChangelogVersion(currentVer);
+          setChangelogMode('whats-new');
+          setIsChangelogOpen(true);
+        }
+        localStorage.setItem('habits_last_seen_version', currentVer);
       } catch {}
 
       try {
@@ -484,6 +501,11 @@ export const App: React.FC = () => {
           setIsUpdateModalOpen(true);
           setIsSettingsModalOpen(false);
         }}
+        onOpenChangelog={(ver) => {
+          setChangelogVersion(ver || '1.0.7');
+          setChangelogMode('full-history');
+          setIsChangelogOpen(true);
+        }}
       />
 
       {/* App Update Modal */}
@@ -491,6 +513,14 @@ export const App: React.FC = () => {
         update={availableUpdate}
         isOpen={isUpdateModalOpen}
         onClose={() => setIsUpdateModalOpen(false)}
+      />
+
+      {/* Changelog & What's New Modal */}
+      <ChangelogModal
+        isOpen={isChangelogOpen}
+        onClose={() => setIsChangelogOpen(false)}
+        version={changelogVersion}
+        initialMode={changelogMode}
       />
     </div>
   );

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Sparkles, Download, CheckCircle2, AlertCircle, X, RefreshCw } from 'lucide-react';
 import { Update } from '@tauri-apps/plugin-updater';
 import { downloadAndInstallUpdate, UpdateProgress } from '../lib/updater';
+import { getReleaseByVersion } from '../lib/changelog';
 
 interface UpdateModalProps {
   update: Update | null;
@@ -17,6 +18,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({ update, isOpen, onClos
   const isInstalling = progress?.status === 'downloading' || progress?.status === 'installing';
   const isCompleted = progress?.status === 'completed';
   const isError = progress?.status === 'error';
+  const changelogEntry = getReleaseByVersion(update.version);
 
   const handleStartUpdate = async () => {
     await downloadAndInstallUpdate(update, (p) => {
@@ -59,16 +61,44 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({ update, isOpen, onClos
         {/* Body */}
         <div className="p-6 space-y-4">
           <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
-            Вийшла нова версія додатку <strong>Трекер Звичок ({update.version})</strong>. Вона містить покращення та виправлення.
+            Вийшла нова версія додатку <strong>Трекер Звичок ({update.version})</strong>.
           </p>
 
           {/* Release Notes */}
-          {update.body && (
-            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#0B0C10] border border-slate-200 dark:border-white/5 text-xs text-gray-700 dark:text-gray-300 space-y-1.5 max-h-36 overflow-y-auto">
-              <span className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider block">
-                Що нового:
+          {(update.body || changelogEntry) && (
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#0B0C10] border border-slate-200 dark:border-white/5 text-xs text-gray-700 dark:text-gray-300 space-y-2 max-h-40 overflow-y-auto">
+              <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">
+                Що нового у версії {update.version}:
               </span>
-              <p className="whitespace-pre-wrap leading-relaxed">{update.body}</p>
+              {changelogEntry?.title && (
+                <p className="font-bold text-gray-900 dark:text-white text-xs">
+                  {changelogEntry.title}
+                </p>
+              )}
+              {update.body ? (
+                <p className="whitespace-pre-wrap leading-relaxed text-[11px]">{update.body}</p>
+              ) : changelogEntry ? (
+                <ul className="space-y-1 text-[11px]">
+                  {changelogEntry.features?.map((f, i) => (
+                    <li key={i} className="flex items-start gap-1.5">
+                      <span className="text-emerald-500 font-bold">✦</span>
+                      <span>{f}</span>
+                    </li>
+                  ))}
+                  {changelogEntry.improvements?.map((imp, i) => (
+                    <li key={i} className="flex items-start gap-1.5">
+                      <span className="text-amber-500 font-bold">⚡</span>
+                      <span>{imp}</span>
+                    </li>
+                  ))}
+                  {changelogEntry.fixes?.map((fix, i) => (
+                    <li key={i} className="flex items-start gap-1.5">
+                      <span className="text-sky-500 font-bold">🛠</span>
+                      <span>{fix}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
             </div>
           )}
 
