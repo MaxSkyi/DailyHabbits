@@ -3,17 +3,10 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
 
-// Disable default browser context menu globally
-window.addEventListener(
-  'contextmenu',
-  (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    e.stopImmediatePropagation();
-    return false;
-  },
-  { capture: true }
-);
+// Disable default browser context menu globally (without blocking React onContextMenu handlers)
+window.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+});
 
 // Disable default browser/webview shortcut keys (DevTools, Reload, Save, Print, etc.)
 window.addEventListener(
