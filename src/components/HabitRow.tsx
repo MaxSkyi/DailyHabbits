@@ -24,6 +24,7 @@ interface HabitRowProps {
   onEditHabit: (habit: HabitWithLogs) => void;
   onDeleteHabit: (habitId: string) => void;
   onToggleArchive?: (habitId: string, isArchived: boolean) => void;
+  onOpenMoodModal?: (dateStr: string) => void;
   isDragging?: boolean;
   isFloating?: boolean;
   translateY?: number;
@@ -41,6 +42,7 @@ export const HabitRow: React.FC<HabitRowProps> = ({
   onEditHabit,
   onDeleteHabit,
   onToggleArchive,
+  onOpenMoodModal,
   isDragging,
   isFloating,
   translateY = 0,
@@ -219,6 +221,12 @@ export const HabitRow: React.FC<HabitRowProps> = ({
               <div key={day.dateStr} className="flex justify-center">
                 <button
                   onClick={() => onToggleDay(habit.id, day.dateStr, habit.target_value)}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    if (onOpenMoodModal) {
+                      onOpenMoodModal(day.dateStr);
+                    }
+                  }}
                   className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-all duration-150 active:scale-90 relative ${
                     isCompleted
                       ? 'shadow-md shadow-emerald-950/20 text-white'
@@ -236,7 +244,7 @@ export const HabitRow: React.FC<HabitRowProps> = ({
                   }
                   title={`${day.dayShortName}, ${day.dayOfMonth} ${day.monthName}: ${
                     isCompleted ? 'Виконано' : 'Не виконано'
-                  }`}
+                  } (ПКМ — настрій дня)`}
                 >
                   {isCompleted ? (
                     <Check className="w-4 h-4 stroke-[3] text-white" />

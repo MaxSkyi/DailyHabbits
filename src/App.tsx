@@ -8,7 +8,8 @@ import { HabitModal } from './components/HabitModal';
 import { SettingsModal } from './components/SettingsModal';
 import { UpdateModal } from './components/UpdateModal';
 import { MetricDetailModal, MetricDetailType } from './components/MetricDetailModal';
-import { Habit, HabitWithLogs, MetricStats, AppSettings } from './lib/types';
+import { MoodModal } from './components/MoodModal';
+import { Habit, HabitWithLogs, MetricStats, AppSettings, DailyMood, MoodLevel } from './lib/types';
 import { checkForAppUpdate } from './lib/updater';
 import { Update } from '@tauri-apps/plugin-updater';
 import {
@@ -24,6 +25,9 @@ import {
   getHeatmapLogsMap,
   loadSettings,
   saveSettings,
+  loadDailyMoods,
+  saveDailyMood,
+  deleteDailyMood,
 } from './lib/db';
 import {
   getLogicalDate,
@@ -39,6 +43,7 @@ export const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [habits, setHabits] = useState<HabitWithLogs[]>([]);
   const [heatmapLogs, setHeatmapLogs] = useState<Record<string, number>>({});
+  const [moods, setMoods] = useState<Record<string, DailyMood>>({});
   const [settings, setSettings] = useState<AppSettings>({
     dayRolloverHour: 3,
     notificationsEnabled: true,
@@ -58,6 +63,8 @@ export const App: React.FC = () => {
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [detailModalType, setDetailModalType] = useState<MetricDetailType>('today');
+  const [selectedMoodDate, setSelectedMoodDate] = useState<string | null>(null);
+  const [isMoodModalOpen, setIsMoodModalOpen] = useState(false);
 
   // Apply theme whenever settings.theme changes
   useEffect(() => {
@@ -84,13 +91,15 @@ export const App: React.FC = () => {
       applyTheme(loadedSettings.theme);
 
       const todayStr = getLogicalDateStr(loadedSettings.dayRolloverHour);
-      const [loadedHabits, loadedHeatmap] = await Promise.all([
+      const [loadedHabits, loadedHeatmap, loadedMoods] = await Promise.all([
         loadHabitsWithLogs(todayStr, true),
         getHeatmapLogsMap(),
+        loadDailyMoods(),
       ]);
 
       setHabits(loadedHabits);
       setHeatmapLogs(loadedHeatmap);
+      setMoods(loadedMoods);
     } catch (err) {
       console.error('Failed to load habits data', err);
     } finally {
@@ -308,6 +317,38 @@ export const App: React.FC = () => {
     setIsAddModalOpen(true);
   };
 
+  const handleOpenMoodModal = (dateStr: string) => {
+    setSelectedMoodDate(dateStr);
+    setIsMoodModalOpen(true);
+  };
+
+  const handleSaveMood = async (
+    dateStr: string,
+    level: MoodLevel,
+    emoji: string,
+    note?: string | null
+  ) => {
+    try {
+      const saved = await saveDailyMood(dateStr, level, emoji, note);
+      setMoods((prev) => ({ ...prev, [dateStr]: saved }));
+    } catch (err) {
+      console.error('Failed to save mood', err);
+    }
+  };
+
+  const handleDeleteMood = async (dateStr: string) => {
+    try {
+      await deleteDailyMood(dateStr);
+      setMoods((prev) => {
+        const next = { ...prev };
+        delete next[dateStr];
+        return next;
+      });
+    } catch (err) {
+      console.error('Failed to delete mood', err);
+    }
+  };
+
   const handleReorderHabits = async (newOrderedHabits: HabitWithLogs[]) => {
     // 1. Instant optimistic state update
     setHabits(newOrderedHabits);
@@ -367,6 +408,7 @@ export const App: React.FC = () => {
         <HabitList
           habits={habits}
           days={currentWeekDays}
+          moods={moods}
           onPrevWeek={handlePrevWeek}
           onNextWeek={handleNextWeek}
           onTodayWeek={handleTodayWeek}
@@ -380,6 +422,7 @@ export const App: React.FC = () => {
             setIsAddModalOpen(true);
           }}
           onReorderHabits={handleReorderHabits}
+          onOpenMoodModal={handleOpenMoodModal}
         />
 
         {/* 52 Weeks x 7 Days Activity Heatmap */}
@@ -387,6 +430,8 @@ export const App: React.FC = () => {
           logsByDate={heatmapLogs}
           totalActiveHabits={habits.filter((h) => h.is_archived === 0).length}
           logicalTodayStr={logicalTodayStr}
+          moods={moods}
+          onOpenMoodModal={handleOpenMoodModal}
         />
       </main>
 
@@ -400,6 +445,20 @@ export const App: React.FC = () => {
         habits={habits}
         logicalTodayStr={logicalTodayStr}
         weekDays={currentWeekDays}
+        moods={moods}
+      />
+
+      {/* Daily Mood Popover Modal */}
+      <MoodModal
+        isOpen={isMoodModalOpen}
+        dateStr={selectedMoodDate}
+        currentMood={selectedMoodDate ? moods[selectedMoodDate] : null}
+        onClose={() => {
+          setIsMoodModalOpen(false);
+          setSelectedMoodDate(null);
+        }}
+        onSaveMood={handleSaveMood}
+        onDeleteMood={handleDeleteMood}
       />
 
       {/* Habit Create / Edit Modal */}

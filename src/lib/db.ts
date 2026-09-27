@@ -1,5 +1,5 @@
 import Database from '@tauri-apps/plugin-sql';
-import { Habit, HabitLog, HabitWithLogs, MetricStats, AppSettings } from './types';
+import { Habit, HabitLog, HabitWithLogs, MetricStats, AppSettings, DailyMood, MoodLevel } from './types';
 import { calculateStreaks, formatDateKey, parseDateKey, getWeekDays } from './dateUtils';
 
 let dbInstance: Database | null = null;
@@ -8,6 +8,7 @@ let isTauriEnv = false;
 // In-memory fallback for local browser testing & caching
 let memoryHabits: Habit[] = [];
 let memoryLogs: HabitLog[] = [];
+let memoryMoods: Record<string, DailyMood> = {};
 let memorySettings: AppSettings = {
   dayRolloverHour: 3,
   notificationsEnabled: true,
@@ -83,6 +84,16 @@ export async function initDatabase(): Promise<void> {
       );
     `);
 
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS daily_moods (
+        log_date TEXT PRIMARY KEY,
+        mood_level INTEGER NOT NULL,
+        mood_emoji TEXT NOT NULL,
+        note TEXT,
+        updated_at TEXT NOT NULL
+      );
+    `);
+
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_habit_logs_date ON habit_logs(log_date);`);
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_habit_logs_habit ON habit_logs(habit_id);`);
     await db.execute(`CREATE INDEX IF NOT EXISTS idx_habits_active ON habits(is_archived, position);`);
@@ -100,6 +111,7 @@ export async function initDatabase(): Promise<void> {
     // Browser fallback with localStorage
     const savedHabits = localStorage.getItem('habits_data');
     const savedLogs = localStorage.getItem('habit_logs_data');
+    const savedMoods = localStorage.getItem('habits_moods');
     const savedSettings = localStorage.getItem('habits_settings');
 
     if (savedHabits) {
@@ -118,6 +130,15 @@ export async function initDatabase(): Promise<void> {
     } else {
       memoryLogs = [];
       localStorage.setItem('habit_logs_data', JSON.stringify([]));
+    }
+
+    if (savedMoods) {
+      try {
+        memoryMoods = JSON.parse(savedMoods);
+      } catch {}
+    } else {
+      memoryMoods = {};
+      localStorage.setItem('habits_moods', JSON.stringify({}));
     }
 
     if (savedSettings) {
@@ -511,25 +532,88 @@ export async function saveSettings(settings: AppSettings): Promise<void> {
   }
 }
 
+export async function loadDailyMoods(): Promise<Record<string, DailyMood>> {
+  const db = await getDb();
+  const moodsMap: Record<string, DailyMood> = {};
+
+  if (db && isTauriEnv) {
+    const rows = await db.select<DailyMood[]>(`SELECT * FROM daily_moods`);
+    for (const r of rows) {
+      moodsMap[r.log_date] = r;
+    }
+  } else {
+    Object.assign(moodsMap, memoryMoods);
+  }
+  return moodsMap;
+}
+
+export async function saveDailyMood(
+  logDate: string,
+  moodLevel: MoodLevel,
+  moodEmoji: string,
+  note?: string | null
+): Promise<DailyMood> {
+  const db = await getDb();
+  const nowIso = new Date().toISOString();
+  const moodObj: DailyMood = {
+    log_date: logDate,
+    mood_level: moodLevel,
+    mood_emoji: moodEmoji,
+    note: note ? note.trim() : null,
+    updated_at: nowIso,
+  };
+
+  if (db && isTauriEnv) {
+    await db.execute(
+      `INSERT INTO daily_moods (log_date, mood_level, mood_emoji, note, updated_at)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT(log_date) DO UPDATE SET
+         mood_level = $2,
+         mood_emoji = $3,
+         note = $4,
+         updated_at = $5`,
+      [logDate, moodLevel, moodEmoji, moodObj.note, nowIso]
+    );
+  } else {
+    memoryMoods[logDate] = moodObj;
+    localStorage.setItem('habits_moods', JSON.stringify(memoryMoods));
+  }
+  return moodObj;
+}
+
+export async function deleteDailyMood(logDate: string): Promise<void> {
+  const db = await getDb();
+  if (db && isTauriEnv) {
+    await db.execute(`DELETE FROM daily_moods WHERE log_date = $1`, [logDate]);
+  } else {
+    delete memoryMoods[logDate];
+    localStorage.setItem('habits_moods', JSON.stringify(memoryMoods));
+  }
+}
+
 export async function exportBackup(): Promise<string> {
   const db = await getDb();
   let habits: Habit[] = [];
   let logs: HabitLog[] = [];
+  let moods: DailyMood[] = [];
   let settings = await loadSettings();
 
   if (db && isTauriEnv) {
     habits = await db.select<Habit[]>(`SELECT * FROM habits`);
     logs = await db.select<HabitLog[]>(`SELECT * FROM habit_logs`);
+    moods = await db.select<DailyMood[]>(`SELECT * FROM daily_moods`);
   } else {
     habits = memoryHabits;
     logs = memoryLogs;
+    moods = Object.values(memoryMoods);
   }
 
   return JSON.stringify({
-    version: '1.0',
+    version: '1.1',
     exportedAt: new Date().toISOString(),
     habits,
     logs,
+    moods,
     settings,
   }, null, 2);
 }
@@ -545,6 +629,7 @@ export async function importBackup(jsonStr: string): Promise<boolean> {
     if (db && isTauriEnv) {
       await db.execute(`DELETE FROM habit_logs`);
       await db.execute(`DELETE FROM habits`);
+      await db.execute(`DELETE FROM daily_moods`);
 
       for (const h of data.habits) {
         await db.execute(
@@ -575,11 +660,28 @@ export async function importBackup(jsonStr: string): Promise<boolean> {
           [l.habit_id, l.log_date, l.current_value, l.is_completed, l.updated_at]
         );
       }
+
+      if (Array.isArray(data.moods)) {
+        for (const m of data.moods) {
+          await db.execute(
+            `INSERT INTO daily_moods (log_date, mood_level, mood_emoji, note, updated_at)
+             VALUES ($1, $2, $3, $4, $5)`,
+            [m.log_date, m.mood_level, m.mood_emoji, m.note ?? null, m.updated_at]
+          );
+        }
+      }
     } else {
       memoryHabits = data.habits;
       memoryLogs = data.logs;
+      memoryMoods = {};
+      if (Array.isArray(data.moods)) {
+        for (const m of data.moods) {
+          memoryMoods[m.log_date] = m;
+        }
+      }
       localStorage.setItem('habits_data', JSON.stringify(memoryHabits));
       localStorage.setItem('habit_logs_data', JSON.stringify(memoryLogs));
+      localStorage.setItem('habits_moods', JSON.stringify(memoryMoods));
     }
 
     return true;
@@ -594,11 +696,14 @@ export async function clearAllDatabaseData(): Promise<void> {
   if (db && isTauriEnv) {
     await db.execute(`DELETE FROM habit_logs`);
     await db.execute(`DELETE FROM habits`);
+    await db.execute(`DELETE FROM daily_moods`);
   } else {
     memoryHabits = [];
     memoryLogs = [];
+    memoryMoods = {};
     localStorage.removeItem('habits_data');
     localStorage.removeItem('habit_logs_data');
+    localStorage.removeItem('habits_moods');
   }
 }
 

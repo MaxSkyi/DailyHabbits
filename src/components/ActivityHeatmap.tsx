@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { Activity, Calendar } from 'lucide-react';
-import { HeatmapCell } from '../lib/types';
+import { Activity, Calendar, Sparkles } from 'lucide-react';
+import { HeatmapCell, DailyMood } from '../lib/types';
 import { buildHeatmapGrid } from '../lib/dateUtils';
 import { formatDateUkrainian } from '../lib/i18n';
 
@@ -8,12 +8,16 @@ interface ActivityHeatmapProps {
   logsByDate: Record<string, number>;
   totalActiveHabits: number;
   logicalTodayStr: string;
+  moods?: Record<string, DailyMood>;
+  onOpenMoodModal?: (dateStr: string) => void;
 }
 
 export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
   logsByDate,
   totalActiveHabits,
   logicalTodayStr,
+  moods,
+  onOpenMoodModal,
 }) => {
   const [hoveredCell, setHoveredCell] = useState<{
     cell: HeatmapCell;
@@ -122,6 +126,11 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
                     return (
                       <div
                         key={cell.dateStr}
+                        onClick={() => onOpenMoodModal?.(cell.dateStr)}
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          onOpenMoodModal?.(cell.dateStr);
+                        }}
                         className={`w-[10px] h-[10px] rounded-[2px] transition-transform duration-100 hover:scale-150 hover:z-20 cursor-pointer relative ${
                           isToday ? 'ring-1 ring-white/60' : ''
                         }`}
@@ -150,22 +159,39 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
       {/* Interactive Tooltip matching SKILLS.md */}
       {hoveredCell && (
         <div
-          className="fixed z-50 pointer-events-none transform -translate-x-1/2 -translate-y-full mb-2 bg-[#0E1017] border border-white/15 text-white px-3 py-2 rounded-xl shadow-2xl backdrop-blur-md text-xs whitespace-nowrap animate-in fade-in zoom-in-95 duration-100"
+          className="fixed z-50 pointer-events-none transform -translate-x-1/2 -translate-y-full mb-2 bg-[#0E1017] border border-white/15 text-white px-3 py-2 rounded-xl shadow-2xl backdrop-blur-md text-xs whitespace-nowrap animate-in fade-in zoom-in-95 duration-100 space-y-1"
           style={{
             left: `${hoveredCell.x}px`,
             top: `${hoveredCell.y - 8}px`,
           }}
         >
-          <div className="font-semibold text-gray-200 flex items-center gap-1.5">
-            <Calendar className="w-3.5 h-3.5 text-emerald-400" />
-            <span>{formatDateUkrainian(hoveredCell.cell.dateStr)}</span>
+          <div className="font-semibold text-gray-200 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5 text-emerald-400" />
+              <span>{formatDateUkrainian(hoveredCell.cell.dateStr)}</span>
+            </div>
+            {moods?.[hoveredCell.cell.dateStr] && (
+              <span className="text-sm">
+                {moods[hoveredCell.cell.dateStr].mood_emoji}
+              </span>
+            )}
           </div>
-          <div className="text-[11px] text-gray-400 mt-0.5">
+          <div className="text-[11px] text-gray-400">
             <span className="text-emerald-400 font-bold">
               {hoveredCell.cell.completedCount} з {hoveredCell.cell.totalActive}
             </span>{' '}
             звичок виконано ({hoveredCell.cell.percentage}%)
           </div>
+          {moods?.[hoveredCell.cell.dateStr] && (
+            <div className="text-[10px] text-amber-300/90 pt-0.5 border-t border-white/10 flex items-center gap-1">
+              <Sparkles className="w-3 h-3 text-amber-400 shrink-0" />
+              <span className="truncate max-w-[200px]">
+                {moods[hoveredCell.cell.dateStr].note
+                  ? `"${moods[hoveredCell.cell.dateStr].note}"`
+                  : 'Настрій зафіксовано'}
+              </span>
+            </div>
+          )}
         </div>
       )}
     </div>

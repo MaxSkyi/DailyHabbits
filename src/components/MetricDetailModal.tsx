@@ -9,13 +9,17 @@ import {
   Sparkles,
   BarChart3,
   Award,
+  Smile,
+  Heart,
+  MessageSquare,
 } from 'lucide-react';
-import { HabitWithLogs, MetricStats, DayColumn } from '../lib/types';
+import { HabitWithLogs, MetricStats, DayColumn, DailyMood } from '../lib/types';
 import { IconRenderer } from './IconRenderer';
-import { pluralize } from '../lib/i18n';
+import { pluralize, formatDateUkrainian } from '../lib/i18n';
 import { formatDateKey, parseDateKey } from '../lib/dateUtils';
+import { MOOD_OPTIONS } from './MoodModal';
 
-export type MetricDetailType = 'today' | 'streak' | 'week' | 'consistency';
+export type MetricDetailType = 'today' | 'streak' | 'week' | 'consistency' | 'mood';
 
 interface MetricDetailModalProps {
   isOpen: boolean;
@@ -26,6 +30,7 @@ interface MetricDetailModalProps {
   habits: HabitWithLogs[];
   logicalTodayStr: string;
   weekDays: DayColumn[];
+  moods?: Record<string, DailyMood>;
 }
 
 export const MetricDetailModal: React.FC<MetricDetailModalProps> = ({
@@ -37,6 +42,7 @@ export const MetricDetailModal: React.FC<MetricDetailModalProps> = ({
   habits,
   logicalTodayStr,
   weekDays,
+  moods = {},
 }) => {
   if (!isOpen) return null;
 
@@ -120,17 +126,63 @@ export const MetricDetailModal: React.FC<MetricDetailModalProps> = ({
     return { ...w, total, completed, percent };
   });
 
+  // 5. Calculate Mood Analytics
+  const past30Moods = past30Days
+    .map((d) => ({
+      ...d,
+      mood: moods[d.dateStr] || null,
+    }))
+    .filter((d) => d.mood !== null);
+
+  const totalRecordedMoods = past30Moods.length;
+  const avgMoodScore =
+    totalRecordedMoods > 0
+      ? (
+          past30Moods.reduce((sum, d) => sum + (d.mood?.mood_level || 3), 0) /
+          totalRecordedMoods
+        ).toFixed(1)
+      : null;
+
+  const highPerfDays = past30Moods.filter((d) => d.percent >= 80);
+  const lowPerfDays = past30Moods.filter((d) => d.percent < 50);
+  const avgMoodHighPerf =
+    highPerfDays.length > 0
+      ? (
+          highPerfDays.reduce((sum, d) => sum + (d.mood?.mood_level || 3), 0) /
+          highPerfDays.length
+        ).toFixed(1)
+      : null;
+  const avgMoodLowPerf =
+    lowPerfDays.length > 0
+      ? (
+          lowPerfDays.reduce((sum, d) => sum + (d.mood?.mood_level || 3), 0) /
+          lowPerfDays.length
+        ).toFixed(1)
+      : null;
+
+  const moodCounts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  past30Moods.forEach((d) => {
+    if (d.mood) {
+      moodCounts[d.mood.mood_level] = (moodCounts[d.mood.mood_level] || 0) + 1;
+    }
+  });
+
+  const recentMoodNotes = Object.values(moods)
+    .filter((m) => m.note && m.note.trim().length > 0)
+    .sort((a, b) => b.log_date.localeCompare(a.log_date))
+    .slice(0, 10);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200 select-none">
       <div className="bg-white dark:bg-[#16181F] border border-slate-200 dark:border-white/10 rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header Tabs */}
         <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-white/5 bg-slate-50/50 dark:bg-[#1C1F2B]/50 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5 p-1 bg-slate-200/70 dark:bg-black/40 rounded-2xl flex-1 max-w-md overflow-x-auto">
+          <div className="flex items-center gap-1 p-1 bg-slate-200/70 dark:bg-black/40 rounded-2xl flex-1 max-w-lg overflow-x-auto">
             {/* Tab 1: Сьогодні */}
             <button
               type="button"
               onClick={() => onChangeType('today')}
-              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
+              className={`flex-1 flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
                 activeType === 'today'
                   ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20'
                   : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
@@ -144,7 +196,7 @@ export const MetricDetailModal: React.FC<MetricDetailModalProps> = ({
             <button
               type="button"
               onClick={() => onChangeType('streak')}
-              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
+              className={`flex-1 flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
                 activeType === 'streak'
                   ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20'
                   : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
@@ -158,7 +210,7 @@ export const MetricDetailModal: React.FC<MetricDetailModalProps> = ({
             <button
               type="button"
               onClick={() => onChangeType('week')}
-              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
+              className={`flex-1 flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
                 activeType === 'week'
                   ? 'bg-blue-500 text-white shadow-md shadow-blue-500/20'
                   : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
@@ -172,7 +224,7 @@ export const MetricDetailModal: React.FC<MetricDetailModalProps> = ({
             <button
               type="button"
               onClick={() => onChangeType('consistency')}
-              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
+              className={`flex-1 flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
                 activeType === 'consistency'
                   ? 'bg-purple-500 text-white shadow-md shadow-purple-500/20'
                   : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
@@ -180,6 +232,20 @@ export const MetricDetailModal: React.FC<MetricDetailModalProps> = ({
             >
               <TrendingUp className="w-3.5 h-3.5" />
               <span>30 днів</span>
+            </button>
+
+            {/* Tab 5: Настрій */}
+            <button
+              type="button"
+              onClick={() => onChangeType('mood')}
+              className={`flex-1 flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
+                activeType === 'mood'
+                  ? 'bg-gradient-to-r from-amber-500 to-pink-500 text-white shadow-md shadow-pink-500/20'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+              }`}
+            >
+              <Smile className="w-3.5 h-3.5" />
+              <span>Настрій</span>
             </button>
           </div>
 
@@ -551,6 +617,140 @@ export const MetricDetailModal: React.FC<MetricDetailModalProps> = ({
                   ))}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* 5. MOOD BREAKDOWN */}
+          {activeType === 'mood' && (
+            <div className="space-y-5 animate-in fade-in zoom-in-95 duration-150">
+              {/* Top Banner */}
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-500/10 via-pink-500/5 to-purple-500/10 border border-amber-500/20 flex items-center justify-between">
+                <div>
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-1 flex items-center gap-1.5">
+                    <Smile className="w-3.5 h-3.5" />
+                    <span>Щоденний настрій (30 днів)</span>
+                  </h4>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {avgMoodScore ? (
+                      <>
+                        {avgMoodScore} <span className="text-sm font-normal text-gray-400">/ 5.0</span>
+                      </>
+                    ) : (
+                      'Немає записів'
+                    )}
+                  </p>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                    Зафіксовано днів: <span className="font-semibold text-amber-500">{totalRecordedMoods} з 30</span>
+                  </p>
+                </div>
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-500">
+                  <Heart className="w-6 h-6 fill-amber-500/20" />
+                </div>
+              </div>
+
+              {/* Correlation Insights */}
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#1C1F2B] border border-slate-200 dark:border-white/5 space-y-3">
+                <h5 className="text-xs font-semibold text-gray-900 dark:text-white flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Зв'язок між звичками та настроєм</span>
+                </h5>
+
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                    <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+                      У дні високої активності (≥80%)
+                    </p>
+                    <p className="text-base font-bold text-gray-900 dark:text-white mt-1">
+                      {avgMoodHighPerf ? `${avgMoodHighPerf} / 5.0 🤩` : '—'}
+                    </p>
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
+                      {highPerfDays.length} {pluralize(highPerfDays.length, 'день', 'дні', 'днів')}
+                    </p>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20">
+                    <p className="text-[10px] text-rose-600 dark:text-rose-400 font-medium">
+                      У дні низької активності (&lt;50%)
+                    </p>
+                    <p className="text-base font-bold text-gray-900 dark:text-white mt-1">
+                      {avgMoodLowPerf ? `${avgMoodLowPerf} / 5.0 😔` : '—'}
+                    </p>
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
+                      {lowPerfDays.length} {pluralize(lowPerfDays.length, 'день', 'дні', 'днів')}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Mood Distribution */}
+              <div className="space-y-2">
+                <h5 className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  🌈 Розподіл емоцій за місяць
+                </h5>
+                <div className="space-y-1.5">
+                  {MOOD_OPTIONS.map((opt) => {
+                    const count = moodCounts[opt.level] || 0;
+                    const percent = totalRecordedMoods > 0 ? Math.round((count / totalRecordedMoods) * 100) : 0;
+                    return (
+                      <div
+                        key={opt.level}
+                        className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#1C1F2B] border border-slate-200 dark:border-white/5 flex items-center justify-between text-xs"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-lg">{opt.emoji}</span>
+                          <span className="font-semibold text-gray-900 dark:text-white">
+                            {opt.label}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <span className="text-[11px] text-gray-500 dark:text-gray-400">
+                            {count} {pluralize(count, 'день', 'дні', 'днів')} ({percent}%)
+                          </span>
+                          <div className="w-16 h-1.5 bg-black/5 dark:bg-white/5 rounded-full overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all"
+                              style={{
+                                width: `${percent}%`,
+                                backgroundColor:
+                                  opt.level === 5 ? '#F59E0B' : opt.level === 4 ? '#10B981' : opt.level === 3 ? '#60A5FA' : opt.level === 2 ? '#FB923C' : '#F43F5E',
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Recent Mood Notes */}
+              {recentMoodNotes.length > 0 && (
+                <div className="space-y-2">
+                  <h5 className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <MessageSquare className="w-3 h-3" />
+                    <span>Останні замітки до днів</span>
+                  </h5>
+                  <div className="space-y-1.5">
+                    {recentMoodNotes.map((m) => (
+                      <div
+                        key={m.log_date}
+                        className="p-3 rounded-xl bg-slate-50 dark:bg-[#1C1F2B] border border-slate-200 dark:border-white/5 space-y-1"
+                      >
+                        <div className="flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-1.5 font-semibold text-gray-900 dark:text-white">
+                            <span>{m.mood_emoji}</span>
+                            <span>{formatDateUkrainian(m.log_date)}</span>
+                          </div>
+                        </div>
+                        <p className="text-[11px] text-gray-600 dark:text-gray-300 italic">
+                          "{m.note}"
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

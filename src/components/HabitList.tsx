@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, Plus, Sparkles, Calendar, Archive } from 'lucide-react';
-import { HabitWithLogs, DayColumn } from '../lib/types';
+import { HabitWithLogs, DayColumn, DailyMood } from '../lib/types';
 import { HabitRow } from './HabitRow';
 
 interface HabitListProps {
   habits: HabitWithLogs[];
   days: DayColumn[];
+  moods?: Record<string, DailyMood>;
   onPrevWeek: () => void;
   onNextWeek: () => void;
   onTodayWeek: () => void;
@@ -16,11 +17,13 @@ interface HabitListProps {
   onToggleArchive: (habitId: string, isArchived: boolean) => void;
   onOpenAddModal: () => void;
   onReorderHabits: (newOrderedHabits: HabitWithLogs[]) => void;
+  onOpenMoodModal?: (dateStr: string) => void;
 }
 
 export const HabitList: React.FC<HabitListProps> = ({
   habits,
   days,
+  moods,
   onPrevWeek,
   onNextWeek,
   onTodayWeek,
@@ -31,6 +34,7 @@ export const HabitList: React.FC<HabitListProps> = ({
   onToggleArchive,
   onOpenAddModal,
   onReorderHabits,
+  onOpenMoodModal,
 }) => {
   const [filterTab, setFilterTab] = useState<'active' | 'archived'>('active');
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
@@ -197,17 +201,38 @@ export const HabitList: React.FC<HabitListProps> = ({
         <span className="flex-1 min-w-0 pr-2 pl-7">Назва звички</span>
         <div className="flex items-center gap-4 shrink-0">
           <div className="grid grid-cols-7 gap-2 w-[266px] sm:w-[280px]">
-            {days.map((d) => (
-              <div
-                key={d.dateStr}
-                className={`text-center flex flex-col items-center justify-center ${
-                  d.isToday ? 'text-emerald-400 font-bold' : 'text-gray-400'
-                }`}
-              >
-                <span className="text-[11px]">{d.dayShortName}</span>
-                <span className="text-[10px] opacity-70">{d.dayOfMonth}</span>
-              </div>
-            ))}
+            {days.map((d) => {
+              const mood = moods?.[d.dateStr];
+              return (
+                <button
+                  type="button"
+                  key={d.dateStr}
+                  onClick={() => onOpenMoodModal?.(d.dateStr)}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    onOpenMoodModal?.(d.dateStr);
+                  }}
+                  className={`text-center flex flex-col items-center justify-center py-1 px-0.5 rounded-xl hover:bg-slate-200/50 dark:hover:bg-white/5 transition-all group cursor-pointer relative ${
+                    d.isToday ? 'text-emerald-500 dark:text-emerald-400 font-bold' : 'text-gray-400'
+                  }`}
+                  title={
+                    mood
+                      ? `${d.dayShortName}, ${d.dayOfMonth} ${d.monthName} • Настрій: ${mood.mood_emoji} ${mood.note ? `("${mood.note}")` : ''} (Натисніть для зміни)`
+                      : `${d.dayShortName}, ${d.dayOfMonth} ${d.monthName} (Натисніть або ПКМ, щоб відмітити настрій)`
+                  }
+                >
+                  <span className="text-[11px] leading-tight">{d.dayShortName}</span>
+                  <div className="flex items-center gap-0.5">
+                    <span className="text-[10px] opacity-70">{d.dayOfMonth}</span>
+                    {mood && (
+                      <span className="text-[11px] scale-90 -my-0.5 drop-shadow-sm animate-in zoom-in-75 duration-150">
+                        {mood.mood_emoji}
+                      </span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
           </div>
           <span className="text-[11px] w-[56px] text-center shrink-0">Стрик</span>
           <div className="w-[28px] shrink-0" />
@@ -268,6 +293,7 @@ export const HabitList: React.FC<HabitListProps> = ({
                 onEditHabit={onEditHabit}
                 onDeleteHabit={onDeleteHabit}
                 onToggleArchive={onToggleArchive}
+                onOpenMoodModal={onOpenMoodModal}
                 isFloating={isFloating}
                 translateY={translateY}
                 onGripPointerDown={(e) => handleStartPointerDrag(index, e)}

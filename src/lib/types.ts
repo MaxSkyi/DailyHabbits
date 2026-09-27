@@ -71,6 +71,16 @@ export interface HeatmapCell {
 
 export type ThemeMode = 'dark' | 'light' | 'system';
 
+export type MoodLevel = 1 | 2 | 3 | 4 | 5;
+
+export interface DailyMood {
+  log_date: string; // YYYY-MM-DD
+  mood_level: MoodLevel;
+  mood_emoji: string;
+  note?: string | null;
+  updated_at: string;
+}
+
 export interface AppSettings {
   dayRolloverHour: number; // 0 - 23 (default 3)
   notificationsEnabled: boolean;
