@@ -33,14 +33,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const [reminderTime, setReminderTime] = useState(settings.reminderTime || '20:00');
   const [autostart, setAutostart] = useState(settings.autostartEnabled);
-  const [appVersion, setAppVersion] = useState('1.0.7');
+  const [appVersion, setAppVersion] = useState('1.0.8');
   const [fieldStatus, setFieldStatus] = useState<Record<string, string>>({});
   const [floatingToast, setFloatingToast] = useState<string | null>(null);
   const [isConfirmingClear, setIsConfirmingClear] = useState(false);
   const confirmClearTimerRef = React.useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    getVersion().then(setAppVersion).catch(() => setAppVersion('1.0.7'));
+    getVersion().then(setAppVersion).catch(() => setAppVersion('1.0.8'));
   }, []);
 
   useEffect(() => {

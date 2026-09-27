@@ -69,7 +69,7 @@ export const App: React.FC = () => {
   const [isMoodModalOpen, setIsMoodModalOpen] = useState(false);
   const [isChangelogOpen, setIsChangelogOpen] = useState(false);
   const [changelogMode, setChangelogMode] = useState<'whats-new' | 'full-history'>('whats-new');
-  const [changelogVersion, setChangelogVersion] = useState('1.0.7');
+  const [changelogVersion, setChangelogVersion] = useState('1.0.8');
 
   // Apply theme whenever settings.theme changes
   useEffect(() => {
@@ -132,7 +132,7 @@ export const App: React.FC = () => {
 
       // Check if newly updated version has been launched (show What's New)
       try {
-        const currentVer = await getVersion().catch(() => '1.0.7');
+        const currentVer = await getVersion().catch(() => '1.0.8');
         const lastSeenVer = localStorage.getItem('habits_last_seen_version');
         if (lastSeenVer && lastSeenVer !== currentVer) {
           setChangelogVersion(currentVer);

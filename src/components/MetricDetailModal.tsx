@@ -664,7 +664,7 @@ export const MetricDetailModal: React.FC<MetricDetailModalProps> = ({
                       {avgMoodHighPerf ? `${avgMoodHighPerf} / 5.0 🤩` : '—'}
                     </p>
                     <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
-                      {highPerfDays.length} {pluralize(highPerfDays.length, 'день', 'дні', 'днів')}
+                      {pluralize(highPerfDays.length, 'день', 'дні', 'днів')}
                     </p>
                   </div>
 
@@ -676,7 +676,7 @@ export const MetricDetailModal: React.FC<MetricDetailModalProps> = ({
                       {avgMoodLowPerf ? `${avgMoodLowPerf} / 5.0 😔` : '—'}
                     </p>
                     <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
-                      {lowPerfDays.length} {pluralize(lowPerfDays.length, 'день', 'дні', 'днів')}
+                      {pluralize(lowPerfDays.length, 'день', 'дні', 'днів')}
                     </p>
                   </div>
                 </div>
@@ -705,7 +705,7 @@ export const MetricDetailModal: React.FC<MetricDetailModalProps> = ({
 
                         <div className="flex items-center gap-3">
                           <span className="text-[11px] text-gray-500 dark:text-gray-400">
-                            {count} {pluralize(count, 'день', 'дні', 'днів')} ({percent}%)
+                            {pluralize(count, 'день', 'дні', 'днів')} ({percent}%)
                           </span>
                           <div className="w-16 h-1.5 bg-black/5 dark:bg-white/5 rounded-full overflow-hidden">
                             <div
